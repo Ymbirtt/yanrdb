@@ -3,7 +3,7 @@
 set -e
 
 set_name="Parhelion"
-sheet_url="https://access.nullsignal.games/Gateway/English/English/SystemGatewayEnglish-A4%20Printable%20Sheets%201x.pdf"
+sheet_url="https://nullsignal.games/wp-content/uploads/2022/12/ParhelionEnglish-A4-Printable-Sheets-1x-1.pdf"
 sheet_file="ParhelionEnglish-A4-Printable-Sheets-1x-1.pdf"
 sheet_start=0
 sheet_end=67
@@ -15,7 +15,7 @@ cd "$(dirname "$0")"
 
 if [ ! -f "${sheet_file}" ]
 then
-    wget "${sheet_url}" -o "${sheet_file}"
+    wget "${sheet_url}" -O "${sheet_file}"
 fi
 
 echo "Got sheet file"
@@ -23,7 +23,13 @@ echo "Got sheet file"
 if [ ! -d ./sheets ]
 then
     mkdir sheets
+    echo "About to extract sheets from PDF. This might take a while..."
     pdfimages -png "${sheet_file}" sheets/sheet
+fi
+
+if [ ! -d ./cards ]
+then
+    mkdir cards
 fi
 
 for sheet_idx in $(seq ${sheet_start} ${sheet_end} )

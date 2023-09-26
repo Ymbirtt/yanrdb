@@ -20,7 +20,7 @@ cd "$(dirname "$0")"
 
 if [ ! -f "${sheet_file}" ]
 then
-    wget "${sheet_url}" -o "${sheet_file}"
+    wget "${sheet_url}" -O "${sheet_file}"
 fi
 
 echo "Got sheet file"
@@ -28,7 +28,13 @@ echo "Got sheet file"
 if [ ! -d ./sheets ]
 then
     mkdir sheets
+    echo "About to extract sheets from PDF. This might take a while..."
     pdfimages -png "${sheet_file}" sheets/sheet
+fi
+
+if [ ! -d ./cards ]
+then
+    mkdir cards
 fi
 
 echo "Extracted sheets"
