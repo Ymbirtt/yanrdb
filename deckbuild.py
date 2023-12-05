@@ -2,15 +2,15 @@
 import sys
 import argparse
 import os
-from pprint import pprint
 
-from PIL import Image
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import mm
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import white
+import progressbar
 
 import lib.nrdb as nrdb
+
 
 def recursive_search_file(dirname, filename):
     ret = []
@@ -34,6 +34,7 @@ def find_image_for_card(card_name):
     path = paths[0].path
     return path
 
+
 def draw_pdf(deck_name, cards, bleed_mm):
     num_rows = 3
     num_cols = 3
@@ -54,7 +55,7 @@ def draw_pdf(deck_name, cards, bleed_mm):
     canvas.setTitle(deck_name)
 
     first_page = True
-    for card in cards:
+    for card in progressbar.progressbar(cards):
         if row_idx == 0 and col_idx == 0:
             if not first_page:
                 canvas.showPage()
@@ -91,36 +92,66 @@ def draw_pdf(deck_name, cards, bleed_mm):
 
     canvas.save()
 
+
 def fetch_deck_from_id(deck_id):
     deck = nrdb.get_deck(deck_id)
     print(f"Found deck called {deck['name']}")
-    card_names = [card_name for card_id, qty in deck['cards'].items()
-            for card_name in [nrdb.get_card(card_id)['title']]*qty]
-    for card_name in card_names:
-        print(f"    {card_name}")
-    return deck['name'], card_names
+    cards = {nrdb.get_card(card_id)['title']: qty for card_id, qty in deck['cards'].items()}
+    for card_name, num in cards.items():
+        print(f"    {num}x {card_name}")
+    return deck['name'], cards
+
 
 def fetch_deck_from_jnet_file(deck_id):
     deck_name = os.path.splitext(deck_id)[0]
     with open(deck_id) as f:
         decklist = [line.strip().split(' ', 1) for line in f if line.strip()]
-    card_names = [card_name for qty, title in decklist
-            for card_name in [title]*int(qty)]
-    return deck_name, card_names
+    cards = {title: int(qty) for qty, title in decklist}
+    return deck_name, cards
+
+
+def fetch_deck_from_nrdb_pack_id(pack_id):
+    pack = nrdb.get_pack(pack_id)
+    print(f"Got pack called {pack['name']}")
+    all_cards = nrdb.get_cards()
+    cards = (card for card in all_cards if card['pack_code'] == pack_id)
+
+    card_names = {card['title']: card['deck_limit'] for card in cards}
+
+    return pack['name'], card_names
+
+
+def expand_card_names(cards):
+    ret = []
+    for card_name, qty in cards.items():
+
+        if card_name == "Matryoshka":
+            print(f"    {qty}x {card_name} ** Including varied flavour text!")
+            ret += [f"{card_name} {idx+1}" for idx in range(qty)]
+        else:
+            print(f"    {qty}x {card_name}")
+            ret += [card_name] * qty
+    return ret
+
 
 def build_deck(deck_id, id_type, bleed):
     if id_type == 'nrdb_id':
-        deck_name, card_names = fetch_deck_from_id(deck_id)
+        deck_name, cards = fetch_deck_from_id(deck_id)
     elif id_type == 'jnet_file':
-        deck_name, card_names = fetch_deck_from_jnet_file(deck_id)
+        deck_name, cards = fetch_deck_from_jnet_file(deck_id)
+    elif id_type == 'nrdb_pack_id':
+        deck_name, cards = fetch_deck_from_nrdb_pack_id(deck_id)
+
+    card_names = expand_card_names(cards)
 
     card_imgs = [find_image_for_card(card_name) for card_name in card_names]
     draw_pdf(deck_name, card_imgs, bleed)
 
     print("Produced PDF!")
 
+
 def main(argv):
-    supported_id_types = ['nrdb_id', 'jnet_file']
+    supported_id_types = ['nrdb_id', 'jnet_file', 'nrdb_pack_id']
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--bleed', help="Bleed between cards in mm", default=0, type=float)
     parser.add_argument('-t', '--type', help=f"Type of deck id - supported: {', '.join(supported_id_types)}")

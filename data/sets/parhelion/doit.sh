@@ -37,20 +37,26 @@ do
     nrdb_url=https://netrunnerdb.com/api/2.0/public/card/$(printf "%02d%03d" ${set_id} ${card_idx})
     name=$(curl -s ${nrdb_url} | jq --raw-output .data[0].title )
 
-    if [ "$name" != "null" ]
-    then
-        cp sheets/sheet-$(printf "%03d" $sheet_idx).png "cards/${name}.png"
-        echo "Produced card: $name"
-    fi
-
-    if [ ${sheet_idx} -ge 28 -a ${sheet_idx} -le 32 ]
+    if [ ${sheet_idx} -ge 28 -a ${sheet_idx} -le 33 ]
     then
         # matryoshka hack >:(
         # Because of the slightly hacky way I'm counting this and the fact that
         # the 1x PDF contains six copies of Matryoshka, we need to wind back the
         # card index to make sure we accurately identify all the cards after
         # Matryoshka
-        card_idx=$(( ${card_idx} - 1 ))
+        name="${name} $((${sheet_idx} - 27))"
+
+        if [ ${sheet_idx} -le 32 ]
+        then
+            card_idx=$(( ${card_idx} - 1 ))
+        fi
+
+    fi
+
+    if [ "$name" != "null" ]
+    then
+        cp sheets/sheet-$(printf "%03d" $sheet_idx).png "cards/${name}.png"
+        echo "Produced card: $name"
     fi
 
     card_idx=$(( ${card_idx} + 1 ))
